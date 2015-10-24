@@ -42,10 +42,15 @@ jit0-x64: tests/jit0-x64.c
 jit-x64: dynasm-driver.c jit-x64.h
 	$(CC) $(CFLAGS) -o $@ -DJIT=\"jit-x64.h\" \
 		dynasm-driver.c
+jit-x64_opt: dynasm-driver.c jit-x64_opt.h
+	$(CC) $(CFLAGS) -o $@ -DJIT=\"jit-x64_opt.h\" \
+		dynasm-driver.c
 jit-x64.h: jit-x64.dasc
 	        $(LUA) dynasm/dynasm.lua -o $@ jit-x64.dasc
-run-jit-x64: jit-x64
-	./jit-x64 progs/hello.b && objdump -D -b binary \
+jit-x64_opt.h: jit-x64_opt.dasc
+	        $(LUA) dynasm/dynasm.lua -o $@ jit-x64_opt.dasc
+run-jit-x64_opt: jit-x64_opt
+	./jit-x64_opt progs/hello.b && objdump -D -b binary \
 		-mi386 -Mx86-64 /tmp/jitcode
 
 jit0-arm: tests/jit0-arm.c
@@ -60,7 +65,7 @@ run-jit-arm: jit-arm
 	$(QEMU_ARM) jit-arm progs/hello.b && \
 	$(CROSS_COMPILE)objdump -D -b binary -marm /tmp/jitcode
 
-bench-jit-x64: jit-x64
+bench-jit-x64_opt: jit-x64_opt
 	@echo
 	@echo Executing Brainf*ck benchmark suite. Be patient.
 	@echo
