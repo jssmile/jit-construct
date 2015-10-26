@@ -8,7 +8,7 @@
 |// Since rbx is a callee-save register, it will be preserved
 |// across our calls to getchar and putchar.
 |.define PTR, rbx
-|
+|.define temp, rcx
 |// Macro for calling a function.
 |// In cases where our target is <=2**32 away we can use
 |//   | call &addr
@@ -35,6 +35,7 @@ int main(int argc, char *argv[])
 
 	// Function prologue.
 	|  push PTR
+	|  push temp
 	|  mov  PTR, rdi      // rdi store 1st argument
 
 	for (char *p = read_file(argv[1]); *p; p++) {
@@ -80,16 +81,28 @@ int main(int argc, char *argv[])
 			|  mov   byte [PTR], al
 			break;
 		case '[':
-			if (top == limit) err("Nesting too deep.");
-			// Each loop gets two pclabels: at the beginning and end.
-			// We store pclabel offsets in a stack to link the loop
-			// begin and end together.
-			maxpc += 2;
-			*top++ = maxpc;
-			dasm_growpc(&state, maxpc);
-			|  cmp  byte [PTR], 0
-			|  je   =>(maxpc-2)
-			|=>(maxpc-1):
+			if(*(p+1) == '-' && *(p+2) == ']'){
+			|  mov byte[PTR], 0
+			p += 2;
+			}
+			else if (*(p+1) == '>' && *(p+2) == '+' && *(p+3) == '<' && *(p+4) == '-' && *(p+5) == ']'){
+			|  mov cl, byte[PTR]
+			|  add byte[PTR+1], cl
+			|  mov byte[PTR], 0
+			p += 5;
+			}
+			else{	
+				if (top == limit) err("Nesting too deep.");
+				// Each loop gets two pclabels: at the beginning and end.
+				// We store pclabel offsets in a stack to link the loop
+				// begin and end together.
+				maxpc += 2;
+				*top++ = maxpc;
+				dasm_growpc(&state, maxpc);
+				|  cmp  byte [PTR], 0
+				|  je   =>(maxpc-2)
+				|=>(maxpc-1):
+				}
 			break;
 		case ']':
 			if (top == pcstack) err("Unmatched ']'");
@@ -103,6 +116,7 @@ int main(int argc, char *argv[])
 
 	// Function epilogue.
 	|  pop  PTR
+	|  pop  temp
 	|  ret
 
 	void (*fptr)(char*) = jitcode(&state);
